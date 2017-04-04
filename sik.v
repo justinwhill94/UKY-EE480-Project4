@@ -40,7 +40,22 @@
 //#######################################################################
 // Main Processor Module
 //#######################################################################
+module processor(halt, reset, clk);
+output reg halt;
+input reset, clk;
 
+reg `WORD regfile `REGSIZE;
+reg `WORD mainmem `MEMSIZE;
+reg `WORD pc = 0;
+reg `WORD iReg;
+reg `STATE CurrState = `Start;
+reg `REGNUM sp = -1;
+reg `REGNUM dest;
+reg `REGNUM src;
+reg torf;
+reg preit = 0;
+reg `PRE pre;
+integer a;
 
 
 //#######################################################################
