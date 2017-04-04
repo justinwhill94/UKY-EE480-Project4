@@ -57,6 +57,33 @@ reg preit = 0;
 reg `PRE pre;
 integer a;
 
+// Reset
+always @(reset)
+begin
+
+end
+
+// Stage 1
+always @(posedge clk)
+begin
+end
+
+// Stage 2
+always @(posedge clk)
+begin
+end
+
+// Stage 3
+always @(posedge clk)
+begin
+end
+
+// Stage 4
+always @(posedge clk)
+begin
+end
+endmodule
+
 
 //#######################################################################
 // Test Bench
