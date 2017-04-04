@@ -63,6 +63,10 @@ begin
 
 end
 
+//#######################################################################
+// Thread 1
+//#######################################################################
+
 // Stage 1
 always @(posedge clk)
 begin
@@ -80,6 +84,31 @@ end
 
 // Stage 4
 always @(posedge clk)
+begin
+end
+
+
+//#######################################################################
+// Thread 2
+//#######################################################################
+
+// Stage 1
+always @(negedge clk)
+begin
+end
+
+// Stage 2
+always @(negedge clk)
+begin
+end
+
+// Stage 3
+always @(negedge clk)
+begin
+end
+
+// Stage 4
+always @(negedge clk)
 begin
 end
 endmodule
