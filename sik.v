@@ -13,29 +13,29 @@
 `define MEMSIZE [65535:0]
 
 // Opcode State Numbers
-`define OPadd 
-`define OPand 
-`define OPcall 
-`define OPdup 
-`define OPget 
-`define OPjumpf 
-`define OPjump 
-`define OPjumpt 
-`define OPload 
-`define OPlt 
-`define OPor 
-`define OPpop 
-`define OPpre 
-`define OPpush 
-`define OPput 
-`define OPret 
-`define OPstore 
-`define OPsub 
-`define OPsys 
-`define OPtest 
-`define OPxor 
-`define OPstart 
-`define OPstart1 
+`define OPadd
+`define OPand
+`define OPcall
+`define OPdup
+`define OPget
+`define OPjumpf
+`define OPjump
+`define OPjumpt
+`define OPload
+`define OPlt
+`define OPor
+`define OPpop
+`define OPpre
+`define OPpush
+`define OPput
+`define OPret
+`define OPstore
+`define OPsub
+`define OPsys
+`define OPtest
+`define OPxor
+`define OPstart
+`define OPstart1
 
 //#######################################################################
 // Main Processor Module
@@ -46,21 +46,32 @@ input reset, clk;
 
 reg `WORD regfile `REGSIZE;
 reg `WORD mainmem `MEMSIZE;
-reg `WORD pc = 0;
-reg `WORD iReg;
-reg `STATE CurrState = `Start;
-reg `REGNUM sp = -1;
-reg `REGNUM dest;
-reg `REGNUM src;
-reg torf;
-reg preit = 0;
-reg `PRE pre;
-integer a;
+reg `WORD pc [1:0];
+reg `WORD iReg [1:0];
+reg `STATE CurrState [1:0];
+reg `REGNUM sp [1:0];
+reg `REGNUM dest [1:0];
+reg `REGNUM src [1:0];
+reg  torf [1:0];
+reg  preit [1:0];
+reg `PRE pre [1:0];
+integer a [1:0];
 
 // Reset
 always @(reset)
 begin
-
+    halt = 0;
+    pc[0] = 0;
+    pc[1] = 0;
+    sn <= `OPstart;
+		CurrState[0] = `Start;
+		CurrState[1] = `Start;
+		sp[0] = -1;
+		sp[1] = -1;
+		preit[0] = 0;
+		preit[0] = 0;
+    $readmemh0(r);
+    $readmemh1(m);
 end
 
 //#######################################################################
