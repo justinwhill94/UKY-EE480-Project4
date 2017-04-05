@@ -55,6 +55,7 @@ reg `REGNUM src [1:0];
 reg  torf [1:0];
 reg  preit [1:0];
 reg `PRE pre [1:0];
+reg thread;
 integer a [1:0];
 
 // Reset
@@ -63,6 +64,7 @@ begin
     halt = 0;
     pc[0] = 0;
     pc[1] = 0;
+	thread = 0;
     CurrState <= `OPstart;
 		CurrState[0] = `Start;
 		CurrState[1] = `Start;
