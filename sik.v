@@ -63,7 +63,7 @@ begin
     halt = 0;
     pc[0] = 0;
     pc[1] = 0;
-    sn <= `OPstart;
+    CurrState <= `OPstart;
 		CurrState[0] = `Start;
 		CurrState[1] = `Start;
 		sp[0] = -1;
@@ -81,6 +81,13 @@ end
 // Stage 1
 always @(posedge clk)
 begin
+	case (CurrState[0])
+		`Start: begin iReg[0] <= m[pc]; CurrState <= `Start1; end
+		`Start1: begin
+						pc <= pc + 1;
+			 		 	CurrState <= {(ir `Opcode), (((ir `Opcode) == 0) ? ir[3:0] : 4'd0)};
+		end
+	end
 end
 
 // Stage 2
@@ -106,6 +113,13 @@ end
 // Stage 1
 always @(negedge clk)
 begin
+	case (CurrState[1])
+		`Start: begin ir <= m[pc]; CurrState <= `Start1; end
+		`Start1: begin
+						pc <= pc + 1;
+						CurrState <= {(ir `Opcode), (((ir `Opcode) == 0) ? ir[3:0] : 4'd0)};
+		end
+	end
 end
 
 // Stage 2
