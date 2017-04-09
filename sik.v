@@ -43,19 +43,21 @@ output reg `RNAME regdst;
 input wire `OP opin;
 input `WORD ir;
 
-always @(opin, ir) begin
-    case (ir `Opcode)
-      `OPjzsz: begin
-        regdst = 0;		   // no writing
-        case (ir `Src)	           // use Src as extended opcode
-          `SRCsys: opout = `OPsys;
-          `SRCsz: opout = `OPsz;
-          default: opout = `OPjz;
+    always @(opin, ir) begin
+        case (ir `Opcode)
+          `OPjzsz: begin
+                    regdst = 0;		   // no writing
+                    case (ir `Src)	           // use Src as extended opcode
+                        `SRCsys: opout = `OPsys;
+                        `SRCsz: opout = `OPsz;
+                        default: opout = `OPjz;
+                    endcase
+                end
+          `OPst: begin opout = ir `Opcode; regdst <= 0; end
+           default: begin opout = ir `Opcode; regdst <= ir `Dest; end
         endcase
-      end
-      `OPst: begin opout = ir `Opcode; regdst <= 0; end
-      default: begin opout = ir `Opcode; regdst <= ir `Dest; end
-    endcase
+    end
+
 endmodule
 
 
@@ -95,61 +97,62 @@ reg `WORD pc;
 reg `WORD s1srcval, s1dstval;
 reg `WORD s2val;
 
-always @(reset) begin
-  halt = 0;
-  pc = 0;
-  s0op = `OPnop;
-  s1op = `OPnop;
-  s2op = `OPnop;
-  $readmemh0(regfile);
-  $readmemh1(mainmem);
-end
+    always @(reset) begin
+      halt = 0;
+      pc = 0;
+      s0op = `OPnop;
+      s1op = `OPnop;
+      s2op = `OPnop;
+       $readmemh0(regfile);
+       $readmemh1(mainmem);
+    end
 
-decode mydecode(op, regdst, s0op, ir);
-alu myalu(res, s1op, s1srcval, s1dstval);
+    decode mydecode(op, regdst, s0op, ir);
+    alu myalu(res, s1op, s1srcval, s1dstval);
 
-always @(*) ir = mainmem[pc];
+    always @(*) ir = mainmem[pc];
 
-// new pc value
-always @(*) newpc = (((s1op == `OPjz) && (s1dstval == 0)) ? s1srcval : (pc + 1));
+    // new pc value
+    always @(*) newpc = (((s1op == `OPjz) && (s1dstval == 0)) ? s1srcval : (pc + 1));
 
-// IF squash? Only for jz... with 2-cycle delay if taken
-always @(*) ifsquash = ((s1op == `OPjz) && (s1dstval == 0));
+    // IF squash? Only for jz... with 2-cycle delay if taken
+    always @(*) ifsquash = ((s1op == `OPjz) && (s1dstval == 0));
 
-// RR squash? For both jz and sz... extra cycle allows sz to squash li
-always @(*) rrsquash = (((s1op == `OPsz) || (s1op == `OPjz)) && (s1dstval == 0));
+    // RR squash? For both jz and sz... extra cycle allows sz to squash li
+    always @(*) rrsquash = (((s1op == `OPsz) || (s1op == `OPjz)) && (s1dstval == 0));
 
 
-// Instruction Fetch
-always @(posedge clk) if (!halt) begin
-  s0op <= (ifsquash ? `OPnop : op);
-  s0regdst <= (ifsquash ? 0 : regdst);
-  s0src <= ir `Src;
-  s0dst <= ir `Dest;
-  pc <= newpc;
-end
+    // Instruction Fetch
+    always @(posedge clk) if (!halt) begin
+      s0op <= (ifsquash ? `OPnop : op);
+      s0regdst <= (ifsquash ? 0 : regdst);
+      s0src <= ir `Src;
+      s0dst <= ir `Dest;
+      pc <= newpc;
+    end
 
-// Register Read
-always @(posedge clk) if (!halt) begin
-  s1op <= (rrsquash ? `OPnop : s0op);
-  s1regdst <= (rrsquash ? 0 : s0regdst);
-  s1srcval <= srcval;
-  s1dstval <= dstval;
-end
+    // Register Read
+    always @(posedge clk) if (!halt) begin
+      s1op <= (rrsquash ? `OPnop : s0op);
+      s1regdst <= (rrsquash ? 0 : s0regdst);
+      s1srcval <= srcval;
+      s1dstval <= dstval;
+    end
 
-// ALU and data memory operations
-always @(posedge clk) if (!halt) begin
-  s2op <= s1op;
-  s2regdst <= s1regdst;
-  s2val <= ((s1op == `OPld) ? mainmem[s1srcval] : res);
-  if (s1op == `OPst) mainmem[s1srcval] <= s1dstval;
-  if (s1op == `OPsys) halt <= 1;
-end
+    // ALU and data memory operations
+    always @(posedge clk) if (!halt) begin
+      s2op <= s1op;
+      s2regdst <= s1regdst;
+      s2val <= ((s1op == `OPld) ? mainmem[s1srcval] : res);
+      if (s1op == `OPst) mainmem[s1srcval] <= s1dstval;
+      if (s1op == `OPsys) halt <= 1;
+    end
 
-// Register Write
-always @(posedge clk) if (!halt) begin
-  if (s2regdst != 0) regfile[s2regdst] <= s2val;
-end
+    // Register Write
+    always @(posedge clk) if (!halt) begin
+      if (s2regdst != 0) regfile[s2regdst] <= s2val;
+    end
+
 endmodule
 
 module testbench;
@@ -159,8 +162,8 @@ wire halted;
 integer i = 0;
 processor PE(halted, reset, clk);
 initial begin
-  $dumpfile;
-  $dumpvars(0, PE);
+     $dumpfile;
+     $dumpvars(0, PE);
   #10 reset = 1;
   #10 reset = 0;
   while (!halted && (i < 200)) begin
