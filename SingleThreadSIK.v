@@ -5,7 +5,7 @@
 `define Opcode	[15:12]
 `define Dest    [11:6]
 `define Src	    [5:0]
-`define REGSIZE [63:0]
+`define REGSIZE [511:0]
 `define MEMSIZE [65535:0]
 
 // -----------------------------OPcodes/State Numbers---------------------------
@@ -46,7 +46,7 @@ output reg res;
 input wire `OP op;
 input wire `WORD in1, in2;
 
-always @op, in1, in2) 
+always @op, in1, in2)
 begin
 	case(op)
 		`OPadd: begin res = in1 + in2; end
@@ -108,7 +108,7 @@ begin
 	ir = mainmem[pc];
 	stage0op = ir `Opcode;
 	stage0arg = ir `ARG;
-	
+
 end
 
 // -----------------------------stage 1----------------------------------
@@ -175,7 +175,7 @@ begin
 		begin
 			stage1dest = sp +1;
 			stage1src = 0;
-			stage0op = `OpNop; 
+			stage0op = `OpNop;
 
 			if (stage1preloaded)
 			begin
@@ -184,12 +184,12 @@ begin
 
 			else
 			begin
-				pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+				pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff);
 			end
 			stage1preloaded = 0;
 			sp = sp + 1;
 		end
-	
+
 		`OPJump:
 		begin
 			stage1dest = 0;
@@ -203,12 +203,12 @@ begin
 
 			else
 			begin
-				pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+				pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff);
 			end
 			stage1preloaded = 0;
 			stage1op = `OpNop;
 		end
-	
+
 		`OPJumpF:
 		begin
 			stage1dest = 0;
@@ -223,14 +223,14 @@ begin
 
 				else
 				begin
-					pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+					pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff);
 				end
 
 				stage1preloaded = 0;
 				stage1op = `OpNop;
 			end
 		end
-	
+
 		`OPJumpT:
 		begin
 			stage1dest = 0;
@@ -245,47 +245,47 @@ begin
 
 				else
 				begin
-					pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+					pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff);
 				end
 
 				stage1preloaded = 0;
 				stage1op = `OpNop;
 			end
 		end
-	
+
 		`OPGet:
 		begin
 			stage1dest = sp + 1;
 			stage1src = sp - stage1arg;
 			sp = sp + 1;
 		end
-	
+
 		`OPPut:
 		begin
 			stage1dest = sp - stage1arg;
 			stage1src = sp;
 		end
-	
+
 		`OPPop:
 		begin
 			stage1dest = 0;
 			stage1src = 0;
 			sp = sp - stage1arg;
 		end
-	
+
 		`OPPre:
 		begin
 			stage1dest = 0;
 			stage1src = 0;
 		end
-	
+
 		`OPPush:
 		begin
 			stage1dest = sp +1;
 			stage1src = 0;
 			sp = sp + 1;
 		end
-	
+
 		`OPNop:
 		begin
 			stage1dest = 0;
@@ -319,6 +319,7 @@ end
 // ALU/Memory write
 always @(posedge clk)
 begin
+
 end
 endmodule
 
@@ -444,7 +445,7 @@ reg switch;
 
     decode mydecode(op, regdst, s0op, ir);
     alu myalu(res, s1op, s1srcval, s1dstval);
-    
+
 	always @(*) ir = mainmem[pc[switch]];
 
     // new pc value
