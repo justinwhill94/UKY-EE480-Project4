@@ -1,13 +1,14 @@
 // -----------------------------Size parameters----------------------------------
 `define WORD    [15:0]
 `define OP      [4:0]
+`define ARG		[11:0]
 `define Opcode	[15:12]
 `define Dest    [11:6]
 `define Src	    [5:0]
 `define REGSIZE [63:0]
 `define MEMSIZE [65535:0]
 
-// -----------------------------OPcodes/State Numbers----------------------------------
+// -----------------------------OPcodes/State Numbers---------------------------
 // opcode values/state numbers
 `define OPNoArg	4'h0
 `define OPCall	4'h1
@@ -19,6 +20,7 @@
 `define OPPop	4'h7
 `define OPPre	4'h8
 `define OPPush	4'h9
+`define OPNop 	4'hf
 
 // -----------------------------NoArg Opcodes----------------------------------
 `define OPadd	12'h0
@@ -34,10 +36,11 @@
 `define OPtest	12'ha
 `define OPxor	12'hb
 
+/*
+module decode(src, dest, op, sp);
 
-module decode(opout, src, dst, ir);
 endmodule
-
+*/
 module alu(res, op, in1, in2);
 output reg res;
 input wire `OP op;
@@ -58,6 +61,127 @@ end
 endmodule
 
 module processor(halt, reset, clk);
+
+reg `WORD regile [1:0] `REGSIZE;
+reg `WORD mainmem [1:0] `MEMSIZE;
+reg `WORD ir, srcval[1:0], destval[1:0];
+reg `OP Stage0op[1:0], Stage1op[1:0], Stage2op[1:0], Stage3op[1:0];
+reg `ARG Stage0arg[1:0],Stage1arg[1:0],Stage2arg[1:0],Stage3arg[1:0]
+reg `WORD Stage1src[1:0], Stage2src[1:0], Stage3src[1:0];
+reg `WORD Stage1dest[1:0], Stage2dest[1:0], Stage3dest[1:0];
+reg `WORD pc [1:0];
+reg thread;
+
+always @(reset)
+begin
+	halt = 0;
+	pc = 2'h0;
+	thread = 0;
+	Stage0op = `OPnop;
+	Stage1op = `OPnop;
+	Stage2op = `OPnop;
+	Stage3op = `OPnop;
+end
+
+// ---------------------Thread Switching/Value Forawrding----------------
+always @(negedge clk)
+begin
+	thread = ~thread;
+end
+
+// -----------------------------Stage 0----------------------------------
+// Instruction Fetch
+always @(posedge clk)
+begin
+	ir = mainmem[pc[thread]];
+	stage0op[thread] = ir `Opcode;
+	stage0arg[thread] = ir `ARG;
+	
+end
+
+// -----------------------------Stage 1----------------------------------
+// Instruction Decoding
+always @(posedge clk)
+begin
+	case (stage1op[thread])
+		`OpNoArg:
+		begin
+			case (stage1arg[thread])
+				`OPdup
+				`OPload
+				`OPret
+				`OPstore
+				`OPsys
+				`OPtest
+				default:
+				begin
+					stage1dest[thread] <= sp[thread] -1;
+					stage1src[thread] <= sp[thread];
+					sp[thread] = sp[thread] -1;
+				end
+
+			endcase
+		end
+
+		`OPNoArg:
+		begin
+		end
+
+		`OPCall:
+		begin
+		end
+	
+		`OPJump:
+		begin
+		end
+	
+		`OPJumpF:
+		begin
+		end
+	
+		`OPJumpT:
+		begin
+		end
+	
+		`OPGet:
+		begin
+		end
+	
+		`OPPut:
+		begin
+		end
+	
+		`OPPop:
+		begin
+		end
+	
+		`OPPre:
+		begin
+		end
+	
+		`OPPush:
+		begin
+		end
+	
+		`OPNop:
+		begin
+		end
+ 	
+
+	endcase
+end
+
+// -----------------------------Stage 2----------------------------------
+// Memory Fetch
+always @(posedge clk)
+begin
+end
+
+// -----------------------------Stage 3----------------------------------
+// ALU/Memory write
+always @(posedge clk)
+begin
+end
 endmodule
 
 module testbench;
