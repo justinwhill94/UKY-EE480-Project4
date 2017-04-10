@@ -44,7 +44,7 @@ input wire `OP opin;
 input `WORD ir;
 
     always @(opin, ir) begin
-        case (ir `Opcode)
+        case (ir `Opcode)   // check top 4 bits of instruction register
           `OPjzsz: begin
                     regdst = 0;		   // no writing
                     case (ir `Src)	           // use Src as extended opcode
@@ -86,34 +86,46 @@ input reset, clk;
 
 reg `WORD regfile `REGSIZE;
 reg `WORD mainmem `MEMSIZE;
-reg `WORD ir, srcval, dstval, newpc;
+reg `WORD ir, srcval, dstval;
 reg ifsquash, rrsquash;
 wire `OP op;
 wire `RNAME regdst;
 wire `WORD res;
 reg `OP s0op, s1op, s2op;
 reg `RNAME s0src, s0dst, s0regdst, s1regdst, s2regdst;
-reg `WORD pc;
+reg `WORD pc [0:1];
 reg `WORD s1srcval, s1dstval;
 reg `WORD s2val;
 
     always @(reset) begin
       halt = 0;
-      pc = 0;
+      pc[0] = 0;
+      pc[1] = 0;
       s0op = `OPnop;
       s1op = `OPnop;
       s2op = `OPnop;
-       $readmemh0(regfile);
-       $readmemh1(mainmem);
+    //   $readmemh0(regfile);
+    //   $readmemh1(mainmem);
     end
 
     decode mydecode(op, regdst, s0op, ir);
     alu myalu(res, s1op, s1srcval, s1dstval);
 
-    always @(*) ir = mainmem[pc];
+    always @(*) begin
+        if(count%2 == 0)
+            switch = 1;
+        else
+            switch = 0;
+        end
+        count = count + 1;
+        if(count == 1000)
+            count = 1;
+    end
+
+    always @(*) ir = mainmem[pc[switch]];
 
     // new pc value
-    always @(*) newpc = (((s1op == `OPjz) && (s1dstval == 0)) ? s1srcval : (pc + 1));
+    always @(*) pc[1] = (((s1op == `OPjz) && (s1dstval == 0)) ? s1srcval : (pc[0] + 1));
 
     // IF squash? Only for jz... with 2-cycle delay if taken
     always @(*) ifsquash = ((s1op == `OPjz) && (s1dstval == 0));
@@ -128,7 +140,7 @@ reg `WORD s2val;
       s0regdst <= (ifsquash ? 0 : regdst);
       s0src <= ir `Src;
       s0dst <= ir `Dest;
-      pc <= newpc;
+      pc[0] <= pc[1];
     end
 
     // Register Read
@@ -162,8 +174,8 @@ wire halted;
 integer i = 0;
 processor PE(halted, reset, clk);
 initial begin
-     $dumpfile;
-     $dumpvars(0, PE);
+//   $dumpfile;
+//   $dumpvars(0, PE);
   #10 reset = 1;
   #10 reset = 0;
   while (!halted && (i < 200)) begin
