@@ -66,21 +66,27 @@ Multithreading Declarations
 reg `WORD regile [1:0] `REGSIZE;
 reg `WORD mainmem [1:0] `MEMSIZE;
 reg `WORD ir, srcval[1:0], destval[1:0];
-reg `OP Stage0op[1:0], Stage1op[1:0], Stage2op[1:0], Stage3op[1:0];
-reg `ARG Stage0arg[1:0],Stage1arg[1:0],Stage2arg[1:0],Stage3arg[1:0]
-reg `WORD Stage1src[1:0], Stage2src[1:0], Stage3src[1:0];
-reg `WORD Stage1dest[1:0], Stage2dest[1:0], Stage3dest[1:0];
+reg `OP stage0op[1:0], stage1op[1:0], stage2op[1:0], stage3op[1:0];
+reg `ARG stage0arg[1:0],stage1arg[1:0],stage2arg[1:0],stage3arg[1:0]
+reg `WORD stage1src[1:0], stage2src[1:0], stage3src[1:0];
+reg `WORD stage1dest[1:0], stage2dest[1:0], stage3dest[1:0];
 reg `WORD pc [1:0];
 reg thread;
 */
 Multithreading Declarations
 reg `WORD regile  `REGSIZE;
 reg `WORD mainmem  `MEMSIZE;
-reg `WORD ir, srcval, destval;
-reg `OP Stage0op, Stage1op, Stage2op, Stage3op;
-reg `ARG Stage0arg,Stage1arg,Stage2arg,Stage3arg
-reg `WORD Stage1src, Stage2src, Stage3src;
-reg `WORD Stage1dest, Stage2dest, Stage3dest;
+reg `WORD ir;
+reg `OP stage0op, stage1op, stage2op, stage3op;
+reg `ARG stage0arg,stage1arg,stage2arg,stage3arg
+reg `WORD stage1src, stage2src, stage3src;
+reg `WORD stage1dest, stage2dest, stage3dest;
+reg `WORD stage2destval, stage3destval;
+reg `WORD stage2srcval, stage3srcval;
+reg stage1preloaded, stage2preloaded, stage3preloaded;
+reg [3:0] stage1preReg, [3:0] stage2preReg, [3:0] stage3preReg
+reg torf;
+
 reg `WORD pc ;
 reg thread;
 
@@ -89,108 +95,227 @@ begin
 	halt = 0;
 	pc = 2'h0;
 	thread = 0;
-	Stage0op = `OPnop;
-	Stage1op = `OPnop;
-	Stage2op = `OPnop;
-	Stage3op = `OPnop;
+	stage0op = `OPnop;
+	stage1op = `OPnop;
+	stage2op = `OPnop;
+	stage3op = `OPnop;
 end
 
-// ---------------------Thread Switching/Value Forawrding----------------
-always @(negedge clk)
-begin
-	thread = ~thread;
-end
-
-
-// -----------------------------Stage 0----------------------------------
+// -----------------------------stage 0----------------------------------
 // Instruction Fetch
 always @(posedge clk)
 begin
-	ir = mainmem[pc[thread]];
-	stage0op[thread] = ir `Opcode;
-	stage0arg[thread] = ir `ARG;
+	ir = mainmem[pc];
+	stage0op = ir `Opcode;
+	stage0arg = ir `ARG;
 	
 end
 
-// -----------------------------Stage 1----------------------------------
+// -----------------------------stage 1----------------------------------
 // Instruction Decoding
 always @(posedge clk)
 begin
-	case (stage1op[thread])
+	stage1op = stage0op;
+	stage1arg = stage0arg;
+	case (stage1op)
 		`OpNoArg:
 		begin
-			case (stage1arg[thread])
-				`OPdup
-				`OPload
-				`OPret
-				`OPstore
-				`OPsys
-				`OPtest
+			case (stage1arg)
+				`OPdup:
+				begin
+					stage1dest =sp +1;
+					stage1src = sp;
+					sp = sp -1;
+				end
+
+				`OPload:
+					stage1dest =sp;
+					stage1src = 0;
+				begin
+				end
+
+				`OPret:
+					stage1dest =0;
+					stage1src = sp;
+					sp = sp -1;
+				begin
+				end
+
+				`OPstore:
+					stage1dest =sp -1;
+					stage1src = sp;
+					sp = sp - 1;
+				begin
+				end
+
+				`OPsys:
+					stage1dest = 0;
+					stage1src = 0;
+				begin
+				end
+
+				`OPtest:
+					stage1dest = 0;
+					stage1src = sp;
+					sp = sp-1;
+				begin
+				end
+
 				default:
 				begin
-					stage1dest[thread] <= sp[thread] -1;
-					stage1src[thread] <= sp[thread];
-					sp[thread] = sp[thread] -1;
+					stage1dest = sp -1;
+					stage1src = sp;
+					sp = sp -1;
 				end
 
 			endcase
 		end
 
-		`OPNoArg:
-		begin
-		end
-
 		`OPCall:
 		begin
+			stage1dest = sp +1;
+			stage1src = 0;
+			stage0op = `OpNop; 
+
+			if (stage1preloaded)
+			begin
+				pc = {stage1preReg, stage1arg};
+			end
+
+			else
+			begin
+				pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+			end
+			stage1preloaded = 0;
+			sp = sp + 1;
 		end
 	
 		`OPJump:
 		begin
+			stage1dest = 0;
+			stage1src = 0;
+			stage0op = `OpNop;
+
+			if (stage1preloaded)
+			begin
+				pc = {stage1preReg, stage1arg};
+			end
+
+			else
+			begin
+				pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+			end
+			stage1preloaded = 0;
+			stage1op = `OpNop;
 		end
 	
 		`OPJumpF:
 		begin
+			stage1dest = 0;
+			stage1src = 0;
+			if(!torf)
+			begin
+				stage0op = `OpNop;
+				if (stage1preloaded)
+				begin
+					pc = {stage1preReg, stage1arg};
+				end
+
+				else
+				begin
+					pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+				end
+
+				stage1preloaded = 0;
+				stage1op = `OpNop;
+			end
 		end
 	
 		`OPJumpT:
 		begin
+			stage1dest = 0;
+			stage1src = 0;
+			if(torf)
+			begin
+				stage0op = `OpNop;
+				if (stage1preloaded)
+				begin
+					pc = {stage1preReg, stage1arg};
+				end
+
+				else
+				begin
+					pc =((pc-1) & 16'hf000) | (stage1arg & 16'h0fff); 
+				end
+
+				stage1preloaded = 0;
+				stage1op = `OpNop;
+			end
 		end
 	
 		`OPGet:
 		begin
+			stage1dest = sp + 1;
+			stage1src = sp - stage1arg;
+			sp = sp + 1;
 		end
 	
 		`OPPut:
 		begin
+			stage1dest = sp - stage1arg;
+			stage1src = sp;
 		end
 	
 		`OPPop:
 		begin
+			stage1dest = 0;
+			stage1src = 0;
+			sp = sp - stage1arg;
 		end
 	
 		`OPPre:
 		begin
+			stage1dest = 0;
+			stage1src = 0;
 		end
 	
 		`OPPush:
 		begin
+			stage1dest = sp +1;
+			stage1src = 0;
+			sp = sp + 1;
 		end
 	
 		`OPNop:
 		begin
+			stage1dest = 0;
+			stage1src = 0;
 		end
- 	
+
+ 		default:
+		begin
+			stage1dest = 0;
+			stage1src = 0;
+		end
 
 	endcase
 end
 
-// -----------------------------Stage 2----------------------------------
+// -----------------------------stage 2----------------------------------
 // Memory Fetch
 always @(posedge clk)
 begin
+	stage2src = stage1src;
+	stage2dest = stage1dest;
+	stage2op = stage1op;
+	stage2arg = stage1arg;
+	stage2destval = regfile[stage2dest];
+	stage2srcval = regfile[stage2src];
+
+	endcase
 end
 
-// -----------------------------Stage 3----------------------------------
+// -----------------------------stage 3----------------------------------
 // ALU/Memory write
 always @(posedge clk)
 begin
@@ -262,8 +387,8 @@ input `WORD ir;
                         default: opout = `OPjz;
                     endcase
                 end
-          `OPst: begin opout = ir `Opcode; regdst <= 0; end
-           default: begin opout = ir `Opcode; regdst <= ir `Dest; end
+          `OPst: begin opout = ir `Opcode; regdst = 0; end
+           default: begin opout = ir `Opcode; regdst = ir `Dest; end
         endcase
     end
 endmodule
@@ -334,33 +459,33 @@ reg switch;
 
     // Instruction Fetch
     always @(posedge clk) if (!halt) begin
-      s0op <= (ifsquash ? `OPnop : op);
-      s0regdst <= (ifsquash ? 0 : regdst);
-      s0src <= ir `Src;
-      s0dst <= ir `Dest;
+      s0op = (ifsquash ? `OPnop : op);
+      s0regdst = (ifsquash ? 0 : regdst);
+      s0src = ir `Src;
+      s0dst = ir `Dest;
 	  #5 switch = ~ switch;
     end
 
     // Register Read
     always @(posedge clk) if (!halt) begin
-      s1op <= (rrsquash ? `OPnop : s0op);
-      s1regdst <= (rrsquash ? 0 : s0regdst);
-      s1srcval <= srcval;
-      s1dstval <= dstval;
+      s1op = (rrsquash ? `OPnop : s0op);
+      s1regdst = (rrsquash ? 0 : s0regdst);
+      s1srcval = srcval;
+      s1dstval = dstval;
     end
 
     // ALU and data memory operations
     always @(posedge clk) if (!halt) begin
-      s2op <= s1op;
-      s2regdst <= s1regdst;
-      s2val <= ((s1op == `OPld) ? mainmem[s1srcval] : res);
-      if (s1op == `OPst) mainmem[s1srcval] <= s1dstval;
-      if (s1op == `OPsys) halt <= 1;
+      s2op = s1op;
+      s2regdst = s1regdst;
+      s2val = ((s1op == `OPld) ? mainmem[s1srcval] : res);
+      if (s1op == `OPst) mainmem[s1srcval] = s1dstval;
+      if (s1op == `OPsys) halt = 1;
     end
 
     // Register Write
     always @(posedge clk) if (!halt) begin
-      if (s2regdst != 0) regfile[s2regdst] <= s2val;
+      if (s2regdst != 0) regfile[s2regdst] = s2val;
     end
 
 endmodule
